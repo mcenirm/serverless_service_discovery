@@ -1,0 +1,80 @@
+{
+  "consumes": [
+    "application/json"
+  ],
+  "definitions": {
+    "CatalogServiceModel": {
+      "properties": {
+        "endpoint_url": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "endpoint_url",
+        "ttl",
+        "status"
+      ],
+      "type": "object"
+    }
+  },
+  "info": {
+    "title": "catalog_service",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/catalog/{serviceName}/{serviceVersion}": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "version information"
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "requestTemplates": {
+            "application/json": "{\"service_name\": \"$input.params('serviceName')\",\"service_version\": \"$input.params('serviceVersion')\"}"
+          },
+          "responses": {
+            "default": {
+              "schema": {
+                "$ref": "#/definitions/CatalogServiceModel"
+              },
+              "statusCode": "200"
+            }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/$catalog_serviceARN$/invocations"
+        }
+      },
+      "parameters": [
+        {
+          "description": "The name of the service to look up.",
+          "in": "path",
+          "name": "serviceName",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "description": "The version of the service to look up.",
+          "in": "path",
+          "name": "serviceVersion",
+          "required": true,
+          "type": "string"
+        }
+      ]
+    }
+  },
+  "produces": [
+    "application/json"
+  ],
+  "schemes": [
+    "https"
+  ],
+  "swagger": "2.0"
+}
