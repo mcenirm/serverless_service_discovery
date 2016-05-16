@@ -145,7 +145,7 @@ def deploy_api(api_id, swagger_file, stage):
                                  stageName=stage)
 
         logger.info("--------------------- END POINTS (START) ---------------")
-        for path, path_object in api_def["paths"].iteritems():
+        for path, path_object in iter(api_def["paths"].items()):
             logger.info("End Point: https://%s"
                         ".execute-api.us-east-1.amazonaws.com/"
                         "%s%s" % (api_id, stage, path))
