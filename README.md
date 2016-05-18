@@ -15,7 +15,7 @@ presented by the
 2. Attach `AWSLambdaFullAccess` and `AmazonAPIGatewayAdministrator` policies to user `serverless_service_discovery`.
 3. Create role `lambda_s3`.
 4. Attach `AWSLambdaExecute` policy to `lambda_s3`.
-5. Run `AWS_PROFILE={profile} python catalog_service.py {account_id}`
+5. Run `AWS_PROFILE={profile} python deploy_catalog_service.py {account_id}`
 
 ```
 INFO:botocore.credentials:Found credentials in shared credentials file: ~/.aws/credentials
