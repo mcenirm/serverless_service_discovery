@@ -1,10 +1,13 @@
 from __future__ import print_function
 
+import base64
+import hashlib
 import json
 import os
 import logging
 import zipfile
 import boto3
+import botocore
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -37,9 +40,9 @@ def create_deployment_package(package_name, file_names):
     ziph.close()
 
 
-def create_lambda_function(package_name, function_name, role,
+def create_or_update_lambda_function(package_name, function_name, role,
                            handler, description, account_number):
-    """Create a Lambda function from zip-file.
+    '''Create or update a Lambda function from zip-file.
 
     :param package_name: The name of the package. Full or relative path.
     :param function_name: The name of the Lambda function to create.
@@ -49,10 +52,60 @@ def create_lambda_function(package_name, function_name, role,
     :param: account_number: The Account number of the API Gateway using this
                             function.
     :return: The ARN for the Lambda function.
-    """
+    '''
     with open(package_name, "rb") as package_file:
         package_data = package_file.read()
 
+    function_arn = None
+
+    try:
+        function_info = get_function(function_name)
+        logger.debug('Function details: ' + repr(function_info))
+        old_code_sha_256 = function_info['Configuration']['CodeSha256']
+        new_code_sha_256 = calculate_code_sha_256(package_data)
+        logger.debug('Old CodeSha256: ' + old_code_sha_256)
+        logger.debug('New CodeSha256: ' + new_code_sha_256)
+
+        # Don't update if code has not changed
+        if old_code_sha_256 == new_code_sha_256:
+            function_arn = function_info['Configuration']['FunctionArn']
+        else:
+            function_arn = update_lambda_function(
+                package_data,
+                function_name
+            )
+            logger.info('Updated function ' + function_arn)
+
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == 'ResourceNotFoundException':
+            function_arn = create_lambda_function(
+                package_data,
+                function_name,
+                role,
+                handler,
+                description,
+                account_number
+            )
+            logger.info('Created function ' + function_arn)
+        else:
+            raise e
+
+    return function_arn
+
+
+def create_lambda_function(package_data, function_name, role,
+                           handler, description, account_number):
+    """Create a Lambda function from zip-file.
+
+    :param package_data: The byte contents of the zip-file.
+    :param function_name: The name of the Lambda function to create.
+    :param role: The Role ARN to use when executing Lambda function
+    :param handler: The handler to execute when the Lambda function is called.
+    :param description: The description of the Lambda function.
+    :param: account_number: The Account number of the API Gateway using this
+                            function.
+    :return: The ARN for the Lambda function.
+    """
     client = boto3.client('lambda')
 
     response = client.create_function(
@@ -79,6 +132,51 @@ def create_lambda_function(package_name, function_name, role,
     )
 
     return function_arn
+
+
+def update_lambda_function(package_data, function_name):
+    """Update a Lambda function from zip-file.
+
+    :param package_data: The byte contents of the zip-file.
+    :param function_name: The name of the Lambda function.
+    :return: The ARN for the Lambda function.
+    """
+    # connect to Lambda API
+    client = boto3.client('lambda')
+
+    # update the function code
+    response = client.update_function_code(
+        FunctionName=function_name,
+        ZipFile=package_data,
+        Publish=True
+    )
+
+    # get function configuration to get top level ARN
+    return response['FunctionArn']
+
+
+def calculate_code_sha_256(package_data):
+    '''Calculate the SHA256 hash of the deployment package.
+
+    :param package_data: The byte contents of the zip-file.
+    :return: The hex SHA256 hash of the deployment package.
+    '''
+    hash = hashlib.sha256()
+    hash.update(package_data)
+    return str(base64.b64encode(hash.digest()), 'utf-8')
+
+
+def get_function(function_name):
+    """Return function details given the Function Name.
+
+    :param function_name: The name of the Lambda function.
+    :return: The response from the get_function API call.
+    """
+    client = boto3.client('lambda')
+
+    return client.get_function(
+        FunctionName=function_name
+    )
 
 
 def replace_instances_in_file(filename_source, filename_target, old, new):
@@ -157,7 +255,7 @@ def deploy_api(api_id, swagger_file, stage):
         return api_id, stage, enpoint_url
 
 
-if __name__ == '__main__':
+def main():
     import sys
     from pathlib import Path
 
@@ -176,7 +274,7 @@ if __name__ == '__main__':
         catalog_service_package_file,
         ["catalog_service.py"]
     )
-    function_arn = create_lambda_function(
+    function_arn = create_or_update_lambda_function(
         catalog_service_package_file,
         "catalog_service",
         "arn:aws:iam::"+ACCOUNT_NUMBER+":role/lambda_s3",
@@ -184,6 +282,10 @@ if __name__ == '__main__':
         "Looking up service information.",
         ACCOUNT_NUMBER
     )
+
+    if function_arn is None:
+        return
+
     replace_instances_in_file(
         "catalog_service.swagger.json",
         catalog_service_swagger_file,
@@ -198,3 +300,7 @@ if __name__ == '__main__':
         catalog_service_swagger_file,
         "dev"
     )
+
+
+if __name__ == '__main__':
+    main()
