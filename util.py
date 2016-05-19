@@ -194,33 +194,75 @@ def replace_instances_in_file(filename_source, filename_target, old, new):
             f.write(line)
 
 
-def get_rest_api_name(swagger_file):
-    """Get Rest API Name from Swagger file.
-
-    :param swagger_file: The name of the swagger file. Full or relative path.
-    :return: The name of the API defined in the Swagger file.
-    """
-    with open(swagger_file) as json_data:
-        api_def = json.load(json_data)
-        json_data.close()
-        rest_api_name = api_def["info"]["title"]
-        return rest_api_name
-
-
-def create_api(swagger_file_name):
-    """Create an API defined in Swagger.
-
+def create_or_update_api(swagger_file_name):
+    '''Create or update an API defined in Swagger.
     :param swagger_file_name: The name of the swagger file.
                               Full or relative path.
     :return: The id of the REST API.
-    """
-    with open(swagger_file_name, "r") as swagger_file:
+    '''
+    with open(swagger_file_name, 'r') as swagger_file:
         swagger_data = swagger_file.read()
+    api_name = get_rest_api_name(swagger_data)
+    apis = get_existing_rest_apis_by_name(api_name)
+    if len(apis) == 0:
+        return create_api(swagger_data)
+    else:
+        # TODO: Use a better criteria than "first one"
+        return update_api(apis[0]['id'], swagger_data)
 
+
+def create_api(swagger_data):
+    '''Create an API defined in Swagger.
+
+    :param swagger_data: The contents of the swagger file.
+    :return: The id of the REST API.
+    '''
     client = boto3.client('apigateway')
     response = client.import_rest_api(body=swagger_data)
 
     return response['id']
+
+
+def update_api(rest_api_id, swagger_data):
+    '''Update an API defined in Swagger.
+
+    :param rest_api_id: The id of the REST API.
+    :param swagger_data: The contents of the swagger file.
+    :return: The id of the REST API.
+    '''
+    client = boto3.client('apigateway')
+    response = client.put_rest_api(restApiId=rest_api_id,
+                                   body=swagger_data)
+
+    return response['id']
+
+
+def get_rest_api_name(swagger_data):
+    '''Get Rest API Name from data read from a Swagger file.
+
+    :param swagger_data: The contents of the swagger file.
+    :return: The name of the API defined in the Swagger file.
+    '''
+    api_def = json.loads(swagger_data)
+    rest_api_name = api_def["info"]["title"]
+    return rest_api_name
+
+
+def get_existing_rest_apis_by_name(rest_api_name):
+    '''Get REST APIs with matching API name.
+
+    :param rest_api_name: The name of the API.
+    :return: A possibly empty list of APIs with matching name.
+    '''
+    # get the API Gateway ID of the existing API
+    client = boto3.client('apigateway')
+    paginator = client.get_paginator('get_rest_apis')
+    rest_apis = []
+    for response in paginator.paginate():
+        for item in response["items"]:
+            if (rest_api_name == item["name"]):
+                rest_apis.append(item)
+    return rest_apis
 
 
 def deploy_api(api_id, swagger_file, stage):

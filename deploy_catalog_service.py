@@ -41,7 +41,7 @@ def main():
         "$catalog_serviceARN$",
         function_arn
     )
-    api_id = util.create_api(
+    api_id = util.create_or_update_api(
         catalog_service_swagger_file
     )
     util.deploy_api(
