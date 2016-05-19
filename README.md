@@ -44,3 +44,18 @@ INFO:root:--------------------- END POINTS (END) -----------------
 ```Shell
 AWS_PROFILE={profile} python prepare_services_db.py
 ```
+
+2. Attach `AmazonDynamoDBReadOnlyAccess` policy to `lambda_s3` role.
+   _TODO: Find better policy_
+
+3. Update the Lambda function
+
+```Shell
+AWS_PROFILE={profile} python deploy_catalog_service.py {account_id}
+```
+
+4. Run `curl -s https://XXXXXXXXXX.execute-api.us-east-1.amazonaws.com/dev/catalog/testservice2/1.0`
+
+```JSON
+{"status": "healthy", "endpoint_url": "notarealurl2", "ttl": 600}
+```
