@@ -1,4 +1,5 @@
 {
+  "basePath": "/v1",
   "consumes": [
     "application/json"
   ],
@@ -33,6 +34,9 @@
         "responses": {
           "200": {
             "description": "version information"
+          },
+          "404": {
+            "description": "service not found"
           }
         },
         "x-amazon-apigateway-integration": {
@@ -41,6 +45,12 @@
             "application/json": "{\"service_name\": \"$input.params('serviceName')\",\"service_version\": \"$input.params('serviceVersion')\"}"
           },
           "responses": {
+            ".*NotFound.*": {
+              "responseTemplates": {
+                "application/json": "{\"error_message\":\"Service Not Found\"}"
+              },
+              "statusCode": "404"
+            },
             "default": {
               "schema": {
                 "$ref": "#/definitions/CatalogServiceModel"

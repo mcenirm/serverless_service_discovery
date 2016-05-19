@@ -1,4 +1,5 @@
 import logging
+import boto3
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -12,10 +13,22 @@ def lambda_handler(api_parameters, context):
                 % (api_parameters["service_name"],
                    api_parameters["service_version"]))
 
-    response = {
-            "endpoint_url": "notarealurl",
-            "ttl": "300",
-            "status": "healthy"
-         }
+    table = boto3.resource('dynamodb',region_name='us-east-1').Table('Services')
 
-    return response
+    dynamodb_response = table.get_item(
+                    Key={
+                        'name': str(api_parameters["service_name"]),
+                        'version': str(api_parameters["service_version"])
+                    }
+                )
+
+    if ('Item' in dynamodb_response):
+        logger.info("found service with: %s" %
+                     (dynamodb_response['Item']['endpoint_url'],))
+        return {
+            "endpoint_url": dynamodb_response['Item']['endpoint_url'],
+            "ttl": dynamodb_response['Item']['ttl'],
+            "status": dynamodb_response['Item']['status']
+            }
+    else:
+        raise Exception('NotFound')
