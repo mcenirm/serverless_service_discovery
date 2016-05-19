@@ -251,3 +251,32 @@ def deploy_api(api_id, swagger_file, stage):
                        ".execute-api.us-east-1.amazonaws.com/"
                        "%s" % (api_id, stage))
         return api_id, stage, enpoint_url
+
+
+def delete_rest_api_by_name(api_name):
+    '''Delete API with the given name.
+
+    :param api_name: The name of the API.
+    '''
+    client = boto3.client('apigateway')
+    deleted = []
+    paginator = client.get_paginator('get_rest_apis')
+    for page in paginator.paginate():
+        for item in page['items']:
+            logger.debug('Rest API: ' + repr(item))
+            if item['name'] == api_name:
+                client.delete_rest_api(restApiId=item['id'])
+                logger.info('Deleted rest API: ' + item['id'])
+                deleted.append(item)
+
+
+def delete_function(function_name):
+    '''Delete Lambda function with the given name.
+
+    :param function_name: The name of the function.
+    '''
+    client = boto3.client('lambda')
+    client.delete_function(
+        FunctionName=function_name
+    )
+    logger.info('Deleted Lambda function: ' + function_name)
