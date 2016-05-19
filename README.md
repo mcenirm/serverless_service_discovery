@@ -9,6 +9,7 @@ presented by the
 * [Part 3: Registration](https://aws.amazon.com/blogs/developer/serverless-service-discovery-part-3-registration/)
 * [Part 4: Registrar](https://aws.amazon.com/blogs/developer/serverless-service-discovery-part-4-registrar/)
 
+
 ## Part 1: Get Started
 
 1. Add IAM user `serverless_service_discovery`.
@@ -33,4 +34,13 @@ INFO:root:--------------------- END POINTS (END) -----------------
 
 ```JSON
 {"status": "healthy", "endpoint_url": "notarealurl", "ttl": "300"}
+```
+
+
+## Part 2: Lookup
+
+1. Prepare DynamoDB "Services" table
+
+```Shell
+AWS_PROFILE={profile} python prepare_services_db.py
 ```
