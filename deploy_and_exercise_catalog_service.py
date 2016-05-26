@@ -2,6 +2,11 @@ from __future__ import print_function
 
 
 def main():
+    api_id = deploy()
+    exercise(api_id)
+
+
+def deploy():
     import sys
     from pathlib import Path
 
@@ -75,6 +80,31 @@ def main():
         catalog_service_swagger_file,
         "dev"
     )
+
+    return api_id
+
+
+def exercise(api_id):
+    import requests
+
+    api_url = 'https://{api_id}.execute-api.us-east-1.amazonaws.com/dev/catalog/'.format(api_id=api_id)
+
+    tests = [
+        { 'url': 'testservice1/1.0' },
+        { 'url': 'testservice1/1.1' },
+        { 'url': 'testservice2/1.0' },
+        { 'url': 'testservice3/1.0' },
+    ]
+
+    for test in tests:
+        test_url = api_url + test['url']
+        response = requests.get(test_url)
+        print('#' * 60)
+        print(' ', test_url)
+        print(' ', '-' * 30)
+        print(' ', response.status_code)
+        print(' ', response.text)
+        print()
 
 
 if __name__ == '__main__':
