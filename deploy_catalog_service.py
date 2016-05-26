@@ -16,29 +16,44 @@ def main():
 
     build = Path('build')
     build.mkdir(parents=True, exist_ok=True)
-    catalog_service_package_file = str(build / "catalog_service.zip")
     catalog_service_swagger_file = str(build / "swagger_with_arn.json")
 
+    # Copy swagger template file without replacement
+    util.replace_instances_in_file(
+        'catalog_service.swagger.json',
+        catalog_service_swagger_file,
+        '\0',
+        '\0'
+     )
+
+    function_metadata = {
+        'label': 'catalog_service',
+        'description': 'Looking up service information.',
+    }
+    function_label = function_metadata['label']
+    function_description = function_metadata['description']
+
+    function_module = function_label
+    function_module_file = function_module + '.py'
+    function_package_file = str(build / (function_label + '.zip'))
+
     util.create_deployment_package(
-        catalog_service_package_file,
-        ["catalog_service.py"]
+        function_package_file,
+        [function_module_file]
     )
     function_arn = util.create_or_update_lambda_function(
-        catalog_service_package_file,
-        "catalog_service",
+        function_package_file,
+        function_label,
         "arn:aws:iam::"+ACCOUNT_NUMBER+":role/lambda_s3",
-        "catalog_service.lambda_handler",
-        "Looking up service information.",
+        function_module + '.lambda_handler',
+        function_description,
         ACCOUNT_NUMBER
     )
 
-    if function_arn is None:
-        return
-
     util.replace_instances_in_file(
-        "catalog_service.swagger.json",
         catalog_service_swagger_file,
-        "$catalog_serviceARN$",
+        catalog_service_swagger_file,
+        '$' + function_metadata['label'] + 'ARN$',
         function_arn
     )
     api_id = util.create_or_update_api(
