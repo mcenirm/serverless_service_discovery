@@ -31,6 +31,14 @@ def main():
             'label': 'catalog_service',
             'description': 'Looking up service information.',
         },
+        {
+            'label': 'catalog_register',
+            'description': 'Registering a service.',
+        },
+        {
+            'label': 'catalog_deregister',
+            'description': 'Deregistering a service.',
+        },
     ]:
         function_label = function_metadata['label']
         function_description = function_metadata['description']

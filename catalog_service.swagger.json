@@ -4,6 +4,48 @@
     "application/json"
   ],
   "definitions": {
+    "CatalogDeregisterModel": {
+      "properties": {
+        "service_name": {
+          "type": "string"
+        },
+        "service_version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "service_name",
+        "service_version"
+      ],
+      "type": "object"
+    },
+    "CatalogRegisterModel": {
+      "properties": {
+        "endpoint_url": {
+          "type": "string"
+        },
+        "service_name": {
+          "type": "string"
+        },
+        "service_version": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "ttl": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "service_name",
+        "service_version",
+        "endpoint_url",
+        "ttl",
+        "status"
+      ],
+      "type": "object"
+    },
     "CatalogServiceModel": {
       "properties": {
         "endpoint_url": {
@@ -29,6 +71,78 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/catalog/deregister": {
+      "post": {
+        "parameters": [
+          {
+            "description": "body object",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CatalogDeregisterModel"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "service deregistered"
+          }
+        },
+        "x-amazon-apigateway-auth": {
+          "type": "aws_iam"
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "requestTemplates": {
+            "application/json": "$input.json('$')"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "201"
+            }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/$catalog_deregisterARN$/invocations"
+        }
+      }
+    },
+    "/catalog/register": {
+      "post": {
+        "parameters": [
+          {
+            "description": "body object",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CatalogRegisterModel"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "service registered"
+          }
+        },
+        "x-amazon-apigateway-auth": {
+          "type": "aws_iam"
+        },
+        "x-amazon-apigateway-integration": {
+          "httpMethod": "POST",
+          "requestTemplates": {
+            "application/json": "$input.json('$')"
+          },
+          "responses": {
+            "default": {
+              "statusCode": "201"
+            }
+          },
+          "type": "aws",
+          "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/$catalog_registerARN$/invocations"
+        }
+      }
+    },
     "/catalog/{serviceName}/{serviceVersion}": {
       "get": {
         "responses": {
