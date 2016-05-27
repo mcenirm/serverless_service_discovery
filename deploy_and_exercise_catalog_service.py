@@ -90,21 +90,83 @@ def exercise(api_id):
     api_url = 'https://{api_id}.execute-api.us-east-1.amazonaws.com/dev/catalog/'.format(api_id=api_id)
 
     tests = [
-        { 'url': 'testservice1/1.0' },
-        { 'url': 'testservice1/1.1' },
-        { 'url': 'testservice2/1.0' },
-        { 'url': 'testservice3/1.0' },
+        {
+            'url': 'testservice1/1.0',
+            'expected': {
+                'status_code': 200,
+                'json': {
+                    "endpoint_url": "notarealurl1",
+                    "status": "healthy",
+                    "ttl": 300
+                },
+            },
+        },
+        {
+            'url': 'testservice1/1.1',
+            'expected': {
+                'status_code': 404,
+                'json': {
+                    "error_message": "Service Not Found"
+                },
+            },
+        },
+        {
+            'url': 'testservice2/1.0',
+            'expected': {
+                'status_code': 200,
+                'json': {
+                    "endpoint_url": "notarealurl2",
+                    "status": "healthy",
+                    "ttl": 600
+                },
+            },
+        },
+        {
+            'url': 'testservice3/1.0',
+            'expected': {
+                'status_code': 404,
+                'json': {
+                    "error_message": "Service Not Found"
+                },
+            },
+        },
     ]
 
     for test in tests:
         test_url = api_url + test['url']
-        response = requests.get(test_url)
+        print()
         print('#' * 60)
         print(' ', test_url)
         print(' ', '-' * 30)
-        print(' ', response.status_code)
-        print(' ', response.text)
-        print()
+        response = requests.get(test_url)
+        if 'expected' in test:
+            expected = test['expected']
+            failures = Failures()
+            if 'status_code' in expected:
+                failures.assert_equals('status code', expected['status_code'], response.status_code)
+            if 'json' in expected:
+                failures.assert_equals('json', expected['json'], response.json())
+            if len(failures.failures) > 0:
+                print(failures)
+            else:
+                print('  PASS')
+        else:
+            print(' ', response.status_code)
+            print(' ', response.text)
+
+
+class Failures():
+    def __init__(self):
+        self.failures = []
+    def assert_equals(self, message, expected, actual):
+        if expected != actual:
+            self.failures.append({
+                'message': message,
+                'expected': expected,
+                'actual': actual,
+            })
+    def __str__(self):
+        return str(self.failures)
 
 
 if __name__ == '__main__':
