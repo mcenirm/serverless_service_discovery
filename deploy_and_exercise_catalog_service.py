@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import util
+
 
 def main():
     api_id = deploy()
@@ -9,8 +11,6 @@ def main():
 def deploy():
     import sys
     from pathlib import Path
-
-    import util
 
 
     if len(sys.argv) != 2:
@@ -85,6 +85,8 @@ def deploy():
 
 
 def exercise(api_id):
+    import json
+
     import requests
 
     api_url = 'https://{api_id}.execute-api.us-east-1.amazonaws.com/dev/catalog/'.format(api_id=api_id)
@@ -146,7 +148,36 @@ def exercise(api_id):
                     "message": "Missing Authentication Token"
                 },
             },
-        }
+        },
+        {
+            'url': 'register',
+            'method': 'POST',
+            'signed': True,
+            'json_body': {
+                "endpoint_url": "notarealurlregister6",
+                "service_name": "registerservice6",
+                "service_version": "1.0",
+                "status": "healthy",
+                "ttl": "300"
+            },
+            'expected': {
+                'status_code': 403,
+                'json': {
+                    "message": "Missing Authentication Token"
+                },
+            },
+        },
+        {
+            'url': 'registerservice6/1.0',
+            'expected': {
+                'status_code': 200,
+                'json': {
+                    "endpoint_url": "notarealregister6",
+                    "status": "healthy",
+                    "ttl": 300
+                },
+            },
+        },
     ]
 
     for test in tests:
@@ -159,8 +190,17 @@ def exercise(api_id):
         if method == 'GET':
             response = requests.get(test_url)
         elif method == 'POST':
-            json_body = test.get('json_body', None)
-            response = requests.post(test_url, json=json_body)
+            json_body = test.get('json_body')
+            signed = test.get('signed', False)
+            if signed:
+                response = util.signed_post(
+                    test_url,
+                    'us-east-1',
+                    'execute-api',
+                    json.dumps(json_body)
+                )
+            else:
+                response = requests.post(test_url, json=json_body)
         else:
             raise Exception('Cannot handle method: ' + method)
         if 'expected' in test:
