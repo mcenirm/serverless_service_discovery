@@ -130,6 +130,23 @@ def exercise(api_id):
                 },
             },
         },
+        {
+            'url': 'register',
+            'method': 'POST',
+            'json_body': {
+                "endpoint_url": "notarealurlregister3",
+                "service_name": "registerservice3",
+                "service_version": "1.0",
+                "status": "healthy",
+                "ttl": "300"
+            },
+            'expected': {
+                'status_code': 403,
+                'json': {
+                    "message": "Missing Authentication Token"
+                },
+            },
+        }
     ]
 
     for test in tests:
@@ -138,7 +155,14 @@ def exercise(api_id):
         print('#' * 60)
         print(' ', test_url)
         print(' ', '-' * 30)
-        response = requests.get(test_url)
+        method = test.get('method', 'GET')
+        if method == 'GET':
+            response = requests.get(test_url)
+        elif method == 'POST':
+            json_body = test.get('json_body', None)
+            response = requests.post(test_url, json=json_body)
+        else:
+            raise Exception('Cannot handle method: ' + method)
         if 'expected' in test:
             expected = test['expected']
             failures = Failures()
