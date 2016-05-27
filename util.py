@@ -1,9 +1,16 @@
+from collections import OrderedDict
 import base64
+import datetime
 import hashlib
+import hmac
 import json
-import os
 import logging
+import os
+import urllib
 import zipfile
+
+from botocore.credentials import get_credentials
+from botocore.session import get_session
 import boto3
 import botocore
 
@@ -322,3 +329,129 @@ def delete_function(function_name):
         FunctionName=function_name
     )
     logger.info('Deleted Lambda function: ' + function_name)
+
+
+def sign(key, msg):
+    """Sign string with key."""
+    return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+
+
+def getSignatureKey(key, dateStamp, regionName, serviceName):
+    """Create signature key."""
+    kDate = sign(('AWS4' + key).encode('utf-8'), dateStamp)
+    kRegion = sign(kDate, regionName)
+    kService = sign(kRegion, serviceName)
+    kSigning = sign(kService, 'aws4_request')
+    return kSigning
+
+
+def create_canonical_querystring(params):
+    """Create canonical query string."""
+    ordered_params = OrderedDict(sorted(params.items(), key=lambda t: t[0]))
+    canonical_querystring = ""
+    for key, value in iter(ordered_params.items()):
+        if len(canonical_querystring) > 0:
+            canonical_querystring += ","
+        canonical_querystring += key+"="+value
+    return canonical_querystring
+
+
+def sign_request(method, url, credentials, region, service, body=''):
+    """Sign a HTTP request with AWS V4 signature."""
+    ###############################
+    # 1. Create a Canonical Request
+    ###############################
+    t = datetime.datetime.utcnow()
+    amzdate = t.strftime('%Y%m%dT%H%M%SZ')
+    # Date w/o time, used in credential scope
+    datestamp = t.strftime('%Y%m%d')
+
+    # Create the different parts of the request, with content sorted
+    # in the prescribed order
+    parsed_url = urllib.parse.urlparse(url)
+    canonical_uri = parsed_url.path
+    canonical_querystring = create_canonical_querystring(
+                              urllib.parse.parse_qs(parsed_url.query))
+    canonical_headers = ("host:%sn"
+                         "x-amz-date:%sn" %
+                         (parsed_url.hostname, amzdate))
+    signed_headers = 'host;x-amz-date'
+    if (not (credentials.token is None)):
+        canonical_headers += ("x-amz-security-token:%sn") % (credentials.token,)
+        signed_headers += ';x-amz-security-token'
+
+    payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+    canonical_request = ("%sn%sn%sn%sn%sn%s" %
+                         (method,
+                          urllib.parse.quote(canonical_uri),
+                          canonical_querystring,
+                          canonical_headers,
+                          signed_headers,
+                          payload_hash))
+
+    #####################################
+    # 2. Create a String to Sign
+    #####################################
+    algorithm = 'AWS4-HMAC-SHA256'
+    credential_scope = ("%s/%s/%s/aws4_request" %
+                        (datestamp,
+                         region,
+                         service))
+    string_to_sign = ("%sn%sn%sn%s" %
+                       (algorithm,
+                        amzdate,
+                        credential_scope,
+                        hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()))
+    #####################################
+    # 3. Create a Signature
+    #####################################
+    signing_key = getSignatureKey(credentials.secret_key,
+                                  datestamp, region, service)
+    signature = hmac.new(signing_key, (string_to_sign).encode('utf-8'),
+                         hashlib.sha256).hexdigest()
+
+    ######################################################
+    # 4. Assemble request to it can be used for submission
+    ######################################################
+    authorization_header = ("%s Credential=%s/%s, "
+                            "SignedHeaders=%s, "
+                            "Signature=%s" %
+                            (algorithm,
+                             credentials.access_key,
+                             credential_scope,
+                             signed_headers,
+                             signature))
+    headers = {'x-amz-date': amzdate, 'Authorization': authorization_header}
+    if (not (credentials.token is None)):
+        headers['x-amz-security-token'] = credentials.token
+    request_url = ("%s://%s%s" %
+                   (parsed_url.scheme,parsed_url.netloc,canonical_uri))
+    if (len(canonical_querystring) > 0):
+        request_url += ("?%s" % (canonical_querystring,))
+
+    return request_url, headers, body
+
+
+def signed_post(url, region, service, data, **kwargs):
+    """Signed post with AWS V4 Signature."""
+
+    import requests
+
+    credentials = get_credentials(get_session())
+
+    request_url, headers, body = sign_request(
+        'POST',
+        url,
+        credentials,
+        region,
+        service,
+        body=data
+    )
+
+    logger.info('Signed request: ' + str((request_url, headers, body)))
+    response = requests.post(request_url, headers=headers, data=body, **kwargs)
+    if(not response.ok):
+        logger.error("Error code: %i" % (response.status_code,))
+    else:
+        logger.info("Successfully registered the service.")
+    return response
