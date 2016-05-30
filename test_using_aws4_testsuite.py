@@ -99,18 +99,18 @@ def parse_signed_request(contents):
 
 
 def split_headers_and_body(lines):
-    headers = []
-    body = []
+    headers = ''
+    body = ''
     in_headers = True
     for line in lines:
         if in_headers:
             if line == '':
                 in_headers = False
                 continue
-            headers.append(line)
+            headers += line+'\n'
         else:
-            body.append(line)
-    return '\n'.join(headers), '\n'.join(body)
+            body += line+'\n'
+    return headers, body
 
 
 class TestUsingAWS4TestSuite(unittest.TestCase):
