@@ -72,10 +72,9 @@ def parse_original_request(contents):
 
     r.method, remainder = lines[0].split(' ', 1)
     r.uri, _ = remainder.rsplit(' ', 1)
-    r.headers, line_i = parse_headers_block(lines, 1)
-    r.body = '\n'.join(lines[line_i:])
+    r.headers, r.body = split_headers_and_body(lines[1:])
 
-    r.parsed_url = urllib.parse.urlparse(r.uri, allow_fragments=False)
+    r.parsed_url = urllib.parse.urlparse('https://'+HOST+r.uri, allow_fragments=False)
     r.querystring_params = urllib.parse.parse_qs(r.parsed_url.query)
 
     return r
@@ -89,8 +88,7 @@ def parse_canonical_request(contents):
     c.method = lines[0]
     c.uri = lines[1]
     c.querystring = lines[2]
-    c.headers, line_i = parse_headers_block(lines, 3)
-    c.body = '\n'.join(lines[line_i:])
+    c.headers, c.body = split_headers_and_body(lines[3:])
 
     return c
 
@@ -100,22 +98,19 @@ def parse_signed_request(contents):
     return s
 
 
-def parse_headers_block(lines, line_i):
-    headers = requests.structures.CaseInsensitiveDict()
-    prev_key = None
-    while line_i < len(lines):
-        line = lines[line_i]
-        line_i += 1
-        if line == '':
-            break
-        cont_line = line.lstrip()
-        if cont_line == line:
-            key, value = line.split(':', 1)
-            headers[key] = value.lstrip()
-            prev_key = key
+def split_headers_and_body(lines):
+    headers = []
+    body = []
+    in_headers = True
+    for line in lines:
+        if in_headers:
+            if line == '':
+                in_headers = False
+                continue
+            headers.append(line)
         else:
-            headers[key] += ' '+cont_line
-    return headers, line_i
+            body.append(line)
+    return '\n'.join(headers), '\n'.join(body)
 
 
 class TestUsingAWS4TestSuite(unittest.TestCase):
@@ -154,5 +149,19 @@ class TestUsingAWS4TestSuite(unittest.TestCase):
                     example.original.parsed_url
                 ),
                 example.canonical.uri,
+                msg=example.name+' '+repr(example.original.parsed_url)
+            )
+
+    def test_create_canonical_headers(self):
+        for example in self.suite.examples.values():
+            logger.debug('testing create_canonical_headers on '+example.name)
+
+            self.assertEqual(
+                util.create_canonical_headers(
+                    example.original.parsed_url,
+                    AMZDATE,
+                    CREDENTIALS
+                ),
+                example.canonical.headers,
                 msg=example.name+' '+repr(example.original.parsed_url)
             )
