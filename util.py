@@ -357,7 +357,7 @@ def create_canonical_querystring(params):
 
 
 def create_canonical_uri(parsed_url):
-    return parsed_url.path
+    return urllib.parse.quote(parsed_url.path, safe='/~')
 
 
 def create_canonical_headers(parsed_url, amzdate, credentials):
