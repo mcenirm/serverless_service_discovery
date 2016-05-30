@@ -92,4 +92,5 @@ Remove log group
 
 ```Shell
 aws logs delete-log-group --profile {profile} --log-group-name /aws/lambda/catalog_service
+aws logs delete-log-group --profile {profile} --log-group-name /aws/lambda/catalog_register
 ```
