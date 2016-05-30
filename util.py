@@ -352,7 +352,7 @@ def create_canonical_querystring(params):
     for key, value in iter(ordered_params.items()):
         if len(canonical_querystring) > 0:
             canonical_querystring += '&'
-        canonical_querystring += urllib.parse.quote(key)+"="+value[0]
+        canonical_querystring += urllib.parse.quote(key, safe='~')+"="+value[0]
     return canonical_querystring
 
 
