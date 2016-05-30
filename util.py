@@ -351,7 +351,7 @@ def create_canonical_querystring(params):
     canonical_querystring = ""
     for key, value in iter(ordered_params.items()):
         if len(canonical_querystring) > 0:
-            canonical_querystring += ","
+            canonical_querystring += '&'
         canonical_querystring += key+"="+value[0]
     return canonical_querystring
 
