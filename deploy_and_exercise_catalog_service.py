@@ -161,10 +161,7 @@ def exercise(api_id):
                 "ttl": "300"
             },
             'expected': {
-                'status_code': 403,
-                'json': {
-                    "message": "Missing Authentication Token"
-                },
+                'status_code': 201,
             },
         },
         {
@@ -172,7 +169,7 @@ def exercise(api_id):
             'expected': {
                 'status_code': 200,
                 'json': {
-                    "endpoint_url": "notarealregister6",
+                    "endpoint_url": "notarealurlregister6",
                     "status": "healthy",
                     "ttl": 300
                 },

@@ -59,3 +59,37 @@ AWS_PROFILE={profile} python deploy_catalog_service.py {account_id}
 ```JSON
 {"status": "healthy", "endpoint_url": "notarealurl2", "ttl": 600}
 ```
+
+
+## Part 3: Registration
+
+1. Attach `AmazonAPIGatewayInvokeFullAccess` policy to user `serverless_service_discovery`.
+
+2. Attach `AmazonDynamoDBFullAccess` policy to `lambda_s3` role, replacing `AmazonDynamoDBReadOnlyAccess` policy.
+
+3. Redeply and exercise the catalog service
+
+```Shell
+AWS_PROFILE={profile} python deploy_catalog_service.py {account_id}
+```
+
+
+## Misc
+
+Undeploy everything
+
+```Shell
+AWS_PROFILE={profile} python undeploy_catalog_service.py
+```
+
+Remove services table
+
+```Shell
+aws dynamodb delete-table --profile {profile} --table-name Services
+```
+
+Remove log group
+
+```Shell
+aws logs delete-log-group --profile {profile} --log-group-name /aws/lambda/catalog_service
+```
