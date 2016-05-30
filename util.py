@@ -377,7 +377,7 @@ def create_signed_headers(credentials):
 
 
 def create_canonical_request(method, canonical_uri, canonical_querystring, canonical_headers, signed_headers, payload_hash):
-    canonical_request = ("%sn%sn%sn%sn%sn%s" %
+    canonical_request = ("%s\n%s\n%s\n%s\n%s\n%s" %
                          (method,
                           urllib.parse.quote(canonical_uri),
                           canonical_querystring,
@@ -427,7 +427,7 @@ def sign_request(method, url, credentials, region, service, body='', amzdate=Non
                         (datestamp,
                          region,
                          service))
-    string_to_sign = ("%sn%sn%sn%s" %
+    string_to_sign = ("%s\n%s\n%s\n%s" %
                        (algorithm,
                         amzdate,
                         credential_scope,
