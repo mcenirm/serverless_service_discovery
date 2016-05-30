@@ -356,31 +356,27 @@ def create_canonical_querystring(params):
     return canonical_querystring
 
 
-def sign_request(method, url, credentials, region, service, body=''):
-    """Sign a HTTP request with AWS V4 signature."""
-    ###############################
-    # 1. Create a Canonical Request
-    ###############################
-    t = datetime.datetime.utcnow()
-    amzdate = t.strftime('%Y%m%dT%H%M%SZ')
-    # Date w/o time, used in credential scope
-    datestamp = t.strftime('%Y%m%d')
+def create_canonical_uri(parsed_url):
+    return parsed_url.path
 
-    # Create the different parts of the request, with content sorted
-    # in the prescribed order
-    parsed_url = urllib.parse.urlparse(url)
-    canonical_uri = parsed_url.path
-    canonical_querystring = create_canonical_querystring(
-                              urllib.parse.parse_qs(parsed_url.query))
+
+def create_canonical_headers(parsed_url, amzdate, credentials):
     canonical_headers = ("host:%sn"
                          "x-amz-date:%sn" %
                          (parsed_url.hostname, amzdate))
-    signed_headers = 'host;x-amz-date'
     if (not (credentials.token is None)):
         canonical_headers += ("x-amz-security-token:%sn") % (credentials.token,)
-        signed_headers += ';x-amz-security-token'
+    return canonical_headers
 
-    payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+
+def create_signed_headers(credentials):
+    signed_headers = 'host;x-amz-date'
+    if (not (credentials.token is None)):
+        signed_headers += ';x-amz-security-token'
+    return signed_headers
+
+
+def create_canonical_request(method, canonical_uri, canonical_querystring, canonical_headers, signed_headers, payload_hash):
     canonical_request = ("%sn%sn%sn%sn%sn%s" %
                          (method,
                           urllib.parse.quote(canonical_uri),
@@ -388,6 +384,40 @@ def sign_request(method, url, credentials, region, service, body=''):
                           canonical_headers,
                           signed_headers,
                           payload_hash))
+    return canonical_request
+
+
+def sign_request(method, url, credentials, region, service, body='', amzdate=None):
+    """Sign a HTTP request with AWS V4 signature."""
+    ###############################
+    # 1. Create a Canonical Request
+    ###############################
+    if amzdate is not None:
+        datestamp = amzdate.split('T')[0]
+    else:
+        t = datetime.datetime.utcnow()
+        amzdate = t.strftime('%Y%m%dT%H%M%SZ')
+        # Date w/o time, used in credential scope
+        datestamp = t.strftime('%Y%m%d')
+
+    # Create the different parts of the request, with content sorted
+    # in the prescribed order
+    parsed_url = urllib.parse.urlparse(url)
+    canonical_uri = create_canonical_uri(parsed_url)
+    canonical_querystring = create_canonical_querystring(
+                              urllib.parse.parse_qs(parsed_url.query))
+    canonical_headers = create_canonical_headers(parsed_url, amzdate, credentials)
+    signed_headers = create_signed_headers(credentials)
+
+    payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+    canonical_request = create_canonical_request(
+        method,
+        canonical_uri,
+        canonical_querystring,
+        canonical_headers,
+        signed_headers,
+        payload_hash
+    )
 
     #####################################
     # 2. Create a String to Sign
