@@ -147,13 +147,6 @@ class TestUsingAWS4TestSuite(unittest.TestCase):
 
     def test_create_canonical_uri(self):
         for example in self.suite.examples.values():
-            #if example.name in [
-            #    'post-vanilla-query-space',
-            #    'post-vanilla-query-nonunreserved',
-            #]:
-            #    continue
-            #    # skip the ones where it seems like AWS is wrong
-
             logger.debug('testing create_canonical_uri on '+example.name)
 
             self.assertEqual(
