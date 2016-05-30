@@ -361,11 +361,11 @@ def create_canonical_uri(parsed_url):
 
 
 def create_canonical_headers(parsed_url, amzdate, credentials):
-    canonical_headers = ("host:%sn"
-                         "x-amz-date:%sn" %
+    canonical_headers = ("host:%s\n"
+                         "x-amz-date:%s\n" %
                          (parsed_url.hostname, amzdate))
     if (not (credentials.token is None)):
-        canonical_headers += ("x-amz-security-token:%sn") % (credentials.token,)
+        canonical_headers += ("x-amz-security-token:%s\n") % (credentials.token,)
     return canonical_headers
 
 
